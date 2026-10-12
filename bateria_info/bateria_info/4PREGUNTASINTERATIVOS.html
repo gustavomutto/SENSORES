@@ -1,0 +1,818 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Laboratorio de Sensores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: banco de pruebas — teléfono físico a la izquierda (fijo), panel de control + respuestas a la derecha; se apila en móvil */
+:root {
+  --bg: #EEF1F6;
+  --surface: #FFFFFF;
+  --surface-2: #F5F7FB;
+  --ink: #172130;
+  --muted: #5B6778;
+  --line: #D5DCE6;
+  --accent: #3557D6;
+  --prox: #7445D6;
+  --lux: #C27A05;
+  --bat: #1A8E50;
+  --warn: #D9480F;
+  --stage: #DCE2EB;
+  --code-bg: #172130;
+  --code-fg: #DCE4F0;
+
+  /* el teléfono es un objeto físico: mismos colores en ambos temas */
+  --frame: #11151C;
+  --frame-edge: #2B323D;
+  --scr-dark: #0B0E13;
+  --scr-dark-2: #1A202A;
+  --scr-light: #F3F5F9;
+  --scr-light-2: #FFFFFF;
+  --scr-ink-on-dark: #F2F5FA;
+  --scr-ink-on-light: #131A24;
+  --red: #E5484D;
+  --green: #30C26B;
+  --white: #FFFFFF;
+  --black: #000000;
+
+  --f-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F141C; --surface: #171E29; --surface-2: #1C2431; --ink: #E6EBF2; --muted: #93A0B2;
+    --line: #2A3443; --accent: #8AA2FF; --prox: #AE92FF; --lux: #F2B13C; --bat: #48C985; --warn: #FF8A5B;
+    --stage: #1A212C; --code-bg: #0A0E14; --code-fg: #DCE4F0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F141C; --surface: #171E29; --surface-2: #1C2431; --ink: #E6EBF2; --muted: #93A0B2;
+  --line: #2A3443; --accent: #8AA2FF; --prox: #AE92FF; --lux: #F2B13C; --bat: #48C985; --warn: #FF8A5B;
+  --stage: #1A212C; --code-bg: #0A0E14; --code-fg: #DCE4F0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; }
+
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 32px; margin-bottom: 24px; }
+header h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(28px, 4vw, 40px); line-height: 1.05; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font-family: var(--f-mono); font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); }
+
+.grid { display: grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ───────── Escenario del teléfono ───────── */
+.stage-col { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+@media (max-width: 880px) { .stage-col { position: static; } }
+.stage {
+  position: relative; overflow: hidden; border-radius: 22px;
+  background: var(--stage); border: 1px solid var(--line);
+  padding: 120px 0 84px; display: flex; justify-content: center;
+}
+.room-dark { position: absolute; inset: 0; background: var(--black); opacity: 0; pointer-events: none; transition: opacity .4s; z-index: 0; }
+.lamp { position: absolute; top: -60px; right: -60px; width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,214,102,.95) 0%, rgba(255,200,80,.35) 40%, rgba(255,200,80,0) 70%);
+  opacity: 0; transition: opacity .4s; pointer-events: none; z-index: 0; }
+
+.hand { position: absolute; left: 50%; top: 0; width: 120px; margin-left: -60px; z-index: 5;
+  transform: translateY(-40px); transition: transform .12s linear; pointer-events: none; }
+.hand svg { width: 100%; height: auto; display: block; }
+.cable { position: absolute; left: 50%; bottom: -120px; width: 34px; margin-left: -17px; z-index: 1;
+  transition: transform .5s cubic-bezier(.2,.8,.2,1); transform: translateY(0); }
+.cable.on { transform: translateY(-86px); }
+.cable .plug { width: 34px; height: 46px; background: #E9ECF1; border-radius: 6px 6px 4px 4px; border: 1px solid #B8C0CC; position: relative; }
+.cable .plug::before { content: ""; position: absolute; top: -8px; left: 9px; width: 16px; height: 9px; background: #9AA3AF; border-radius: 2px 2px 0 0; }
+.cable .wire { width: 8px; height: 120px; margin: 0 auto; background: #E9ECF1; border-left: 1px solid #B8C0CC; border-right: 1px solid #B8C0CC; }
+
+.phone { position: relative; z-index: 2; width: 292px; max-width: calc(100% - 32px); aspect-ratio: 292 / 600;
+  background: var(--frame); border-radius: 46px; padding: 12px;
+  box-shadow: 0 0 0 2px var(--frame-edge), 0 30px 60px -20px rgba(0,0,0,.45), inset 0 0 0 1px #000; }
+.phone::before, .phone::after { content: ""; position: absolute; width: 4px; background: var(--frame-edge); border-radius: 2px; }
+.phone::before { right: -5px; top: 140px; height: 64px; }
+.phone::after { left: -5px; top: 110px; height: 40px; box-shadow: 0 58px 0 var(--frame-edge); }
+
+.screen { position: relative; width: 100%; height: 100%; border-radius: 35px; overflow: hidden;
+  background: var(--scr-dark); color: var(--scr-ink-on-dark); transition: filter .35s, background .35s, color .35s; }
+.screen.light { background: var(--scr-light); color: var(--scr-ink-on-light); }
+
+.island { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 96px; height: 26px;
+  background: var(--black); border-radius: 20px; z-index: 30; display: flex; align-items: center; justify-content: flex-end; gap: 7px; padding-right: 10px; }
+.sdot { width: 7px; height: 7px; border-radius: 50%; background: #222833; transition: background .3s, box-shadow .3s; }
+.cam { width: 11px; height: 11px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #2C3D63, #0A0E16 70%); }
+.sdot.prox.active { background: var(--prox); box-shadow: 0 0 8px 2px var(--prox); }
+.sdot.lux.active { background: var(--lux); box-shadow: 0 0 8px 2px var(--lux); }
+
+.statusbar { position: relative; z-index: 20; height: 46px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; font: 600 13px/1 var(--f-body); font-variant-numeric: tabular-nums; }
+.sb-right { display: flex; align-items: center; gap: 6px; }
+.bars { display: flex; align-items: end; gap: 2px; height: 11px; }
+.bars i { width: 3px; background: currentColor; border-radius: 1px; }
+.bicon { position: relative; width: 25px; height: 12px; border: 1.5px solid currentColor; border-radius: 3.5px; padding: 1.5px; opacity: .95; }
+.bicon::after { content: ""; position: absolute; right: -4px; top: 3px; width: 2px; height: 4px; background: currentColor; border-radius: 0 1px 1px 0; }
+.bicon .lvl { height: 100%; background: currentColor; border-radius: 1.5px; transition: width .3s; }
+.bicon.low .lvl { background: var(--red); }
+.bicon.chg .lvl { background: var(--green); }
+.bicon.saver .lvl { background: #F5A524; }
+.bpct { font-size: 12px; }
+
+.app { position: absolute; inset: 46px 0 0 0; padding: 10px 18px 18px; display: flex; flex-direction: column; }
+
+/* Llamada */
+.call { align-items: center; text-align: center; background: linear-gradient(180deg, #1D2A44 0%, #0E1320 100%); color: var(--scr-ink-on-dark); inset: 0; padding-top: 70px; }
+.call .who { font: 600 26px/1.1 var(--f-display); margin-top: 18px; }
+.call .meta { opacity: .7; font-size: 13px; font-variant-numeric: tabular-nums; }
+.avatar { width: 84px; height: 84px; border-radius: 50%; background: #3A4E7A; display: grid; place-items: center; font: 600 30px var(--f-display); }
+.call-btns { margin-top: auto; display: grid; grid-template-columns: repeat(3, 56px); gap: 18px 22px; justify-content: center; margin-bottom: 26px; }
+.cbtn { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,.14); display: grid; place-items: center; font-size: 11px; }
+.cbtn.end { background: var(--red); grid-column: 2; }
+.cbtn svg { width: 22px; height: 22px; }
+.blackout { position: absolute; inset: 0; background: var(--black); z-index: 25; opacity: 0; pointer-events: none; transition: opacity .25s;
+  display: grid; place-items: center; text-align: center; color: #3A4252; font-size: 12px; font-family: var(--f-mono); }
+.blackout.on { opacity: 1; }
+
+/* Inicio (luz) */
+.home .clock { font: 600 64px/1 var(--f-display); letter-spacing: -0.02em; margin-top: 30px; text-align: center; font-variant-numeric: tabular-nums; }
+.home .date { text-align: center; opacity: .7; font-size: 13px; margin-top: 4px; }
+.luxbadge { margin: 22px auto 0; display: inline-flex; align-self: center; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 999px;
+  background: rgba(127,127,127,.18); font: 500 12px var(--f-mono); }
+.apps { margin-top: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 10px; margin-bottom: 12px; }
+.ico { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; }
+.ico span { width: 46px; height: 46px; border-radius: 13px; display: block; }
+.brightbar { display: flex; align-items: center; gap: 8px; font-size: 11px; opacity: .85; margin-bottom: 4px; }
+.brightbar .track { flex: 1; height: 6px; border-radius: 3px; background: rgba(127,127,127,.3); overflow: hidden; }
+.brightbar .fill { height: 100%; background: currentColor; transition: width .35s; }
+
+/* Batería */
+.batscr { align-items: center; text-align: center; }
+.bigbat { margin-top: 26px; position: relative; width: 104px; height: 186px; border: 4px solid rgba(255,255,255,.75); border-radius: 18px; padding: 6px; }
+.screen.light .bigbat { border-color: rgba(19,26,36,.6); }
+.bigbat::before { content: ""; position: absolute; top: -14px; left: 32px; width: 32px; height: 9px; border-radius: 4px 4px 0 0; background: inherit; border: 4px solid rgba(255,255,255,.75); border-bottom: 0; }
+.bigbat .inner { position: relative; height: 100%; border-radius: 10px; overflow: hidden; background: rgba(127,127,127,.15); }
+.bigbat .fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, var(--green), #8BE3AE); transition: height .5s, background .3s; }
+.bigbat .fill.mid { background: linear-gradient(0deg, #E0A100, #F7D774); }
+.bigbat .fill.low { background: linear-gradient(0deg, var(--red), #FF9A9D); }
+.bigbat .wave { position: absolute; left: -50%; width: 200%; height: 16px; top: -8px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255,255,255,.55) 0 45%, transparent 46%) 0 0 / 40px 16px repeat-x; opacity: 0; }
+.charging .bigbat .wave { opacity: 1; animation: wave 1.6s linear infinite; }
+@keyframes wave { to { transform: translateX(40px); } }
+.bolt { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; }
+.charging .bolt { opacity: 1; animation: pulse 1.2s ease-in-out infinite; }
+.bolt svg { width: 46px; height: 46px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+@keyframes pulse { 50% { transform: scale(1.18); } }
+.batpct { font: 700 46px/1 var(--f-display); margin-top: 18px; font-variant-numeric: tabular-nums; }
+.batstate { font-size: 13px; opacity: .75; margin-top: 4px; }
+.batgrid { margin-top: auto; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; margin-bottom: 10px; }
+.batgrid div { background: rgba(127,127,127,.14); border-radius: 12px; padding: 7px 10px; }
+.batgrid small { display: block; font-size: 10px; opacity: .65; text-transform: uppercase; letter-spacing: .06em; }
+.batgrid b { font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.toast { position: absolute; left: 14px; right: 14px; top: 52px; z-index: 22; background: #2A1B0A; color: #FFD9A8; border: 1px solid #6B3F10;
+  border-radius: 14px; padding: 9px 12px; font-size: 12px; transform: translateY(-120%); opacity: 0; transition: .35s; }
+.toast.on { transform: none; opacity: 1; }
+
+/* animación de carga a pantalla completa */
+.chgflash { position: absolute; inset: 0; z-index: 28; background: rgba(0,0,0,.93); display: grid; place-items: center; text-align: center;
+  opacity: 0; pointer-events: none; transition: opacity .35s; color: var(--scr-ink-on-dark); }
+.chgflash.on { opacity: 1; }
+.ring { width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; position: relative;
+  background: conic-gradient(var(--green) calc(var(--p) * 1%), rgba(255,255,255,.1) 0); }
+.ring::before { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: #05070A; }
+.ring b { position: relative; font: 700 38px var(--f-display); font-variant-numeric: tabular-nums; }
+.chgflash.on .ring { box-shadow: 0 0 40px 4px rgba(48,194,107,.45); animation: glow 1.4s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: 0 0 70px 12px rgba(48,194,107,.6); } }
+.chgflash p { margin: 14px 0 0; font-size: 14px; letter-spacing: .08em; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+/* ───────── Panel ───────── */
+.panel { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 6px; }
+.tab { appearance: none; border: 0; background: transparent; color: var(--muted); font: 600 15px var(--f-display); padding: 10px 8px; border-radius: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.tab i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.tab[aria-selected="true"] { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--c); }
+.tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; min-width: 0; }
+.card h2 { font: 600 19px/1.2 var(--f-display); margin: 0 0 4px; }
+.card .sub { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+.eyebrow { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--sc, var(--accent)); margin-bottom: 6px; }
+
+.reading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 14px; }
+.reading .big { font: 700 40px/1 var(--f-display); font-variant-numeric: tabular-nums; color: var(--sc); }
+.reading .unit { font: 500 14px var(--f-mono); color: var(--muted); }
+.pill { font: 600 12px var(--f-mono); padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--sc) 14%, transparent); color: var(--sc); border: 1px solid color-mix(in srgb, var(--sc) 40%, transparent); }
+
+.ctl { display: grid; gap: 6px; margin-bottom: 14px; }
+.ctl label { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.ctl label span { font: 500 12px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--sc); }
+.scale { display: flex; justify-content: space-between; font: 400 11px var(--f-mono); color: var(--muted); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { appearance: none; font: 600 13px var(--f-body); padding: 8px 14px; border-radius: 10px; cursor: pointer; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+.btn:hover { border-color: var(--sc, var(--accent)); }
+.btn.primary { background: var(--sc); border-color: var(--sc); color: var(--surface); }
+.btn[aria-pressed="true"] { background: color-mix(in srgb, var(--sc) 16%, var(--surface)); border-color: var(--sc); }
+.note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+select { font: 500 13px var(--f-body); padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+
+.log { font: 400 12px/1.6 var(--f-mono); background: var(--code-bg); color: var(--code-fg); border-radius: 12px; padding: 10px 12px; height: 132px; overflow: auto; margin: 0; }
+.log .t { color: #7F8DA3; }
+.log .k { color: #9FB4FF; }
+
+.qa { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 620px) { .qa { grid-template-columns: minmax(0, 1fr); } }
+.q { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+.q h3 { margin: 0 0 8px; font: 600 15.5px/1.25 var(--f-display); display: flex; gap: 8px; align-items: baseline; }
+.q h3 em { font: 500 12px var(--f-mono); font-style: normal; color: var(--sc); }
+.q p, .q li { font-size: 14px; }
+.q p { margin: 0 0 6px; }
+.q ul { margin: 0; padding-left: 18px; }
+.q li { margin-bottom: 3px; }
+code { font-family: var(--f-mono); font-size: .88em; background: color-mix(in srgb, var(--sc, var(--accent)) 10%, transparent); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+.tag-ok { display: inline-block; font: 600 12px var(--f-mono); color: var(--bat); }
+pre.code { margin: 12px 0 0; background: var(--code-bg); color: var(--code-fg); border-radius: 12px; padding: 12px 14px; font: 400 12.5px/1.6 var(--f-mono); overflow-x: auto; }
+pre.code .c { color: #7F8DA3; }
+
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+td:first-child i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Laboratorio de Sensores</h1>
+      <p>Mueve los controles y mira cómo reacciona el teléfono. Cada sensor responde cuatro preguntas: qué permisos pide, cuándo se usa, qué usaremos y cómo funciona.</p>
+    </div>
+    <div class="chip-row"><span class="chip">Android · Flutter</span><span class="chip">Simulación interactiva</span></div>
+  </header>
+
+  <div class="grid">
+    <!-- ───── Teléfono ───── -->
+    <div class="stage-col">
+      <div class="stage" id="stage">
+        <div class="room-dark" id="roomDark"></div>
+        <div class="lamp" id="lamp"></div>
+
+        <div class="hand" id="hand" aria-hidden="true">
+          <svg viewBox="0 0 120 150">
+            <g fill="#E8B590" stroke="#B9835E" stroke-width="2">
+              <rect x="22" y="10" width="17" height="70" rx="8.5"/>
+              <rect x="42" y="2" width="17" height="80" rx="8.5"/>
+              <rect x="62" y="6" width="17" height="76" rx="8.5"/>
+              <rect x="82" y="18" width="16" height="64" rx="8"/>
+              <path d="M18 70 Q16 130 50 140 L80 140 Q104 132 102 70 Z"/>
+              <rect x="0" y="62" width="16" height="50" rx="8" transform="rotate(-28 8 87)"/>
+            </g>
+          </svg>
+        </div>
+
+        <div class="phone">
+          <div class="screen" id="screen">
+            <div class="island">
+              <span class="sdot prox" id="dotProx" title="Sensor de proximidad"></span>
+              <span class="sdot lux" id="dotLux" title="Sensor de luz"></span>
+              <span class="cam"></span>
+            </div>
+
+            <div class="statusbar" id="statusbar">
+              <span id="sbTime">9:41</span>
+              <span class="sb-right">
+                <span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span>
+                <span class="bpct" id="sbPct">80%</span>
+                <span class="bicon" id="sbBat"><span class="lvl" id="sbLvl" style="width:80%"></span></span>
+              </span>
+            </div>
+
+            <div class="toast" id="toast">Batería baja · Ahorro de energía activado</div>
+
+            <!-- Pantalla: llamada (proximidad) -->
+            <div class="app call" id="appProx">
+              <div class="avatar">MA</div>
+              <div class="who">Mamá</div>
+              <div class="meta">Llamada en curso · <span id="callTime">00:00</span></div>
+              <div class="call-btns">
+                <div class="cbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg></div>
+                <div class="cbtn"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="13" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="19" cy="13" r="2"/><circle cx="12" cy="20" r="2"/></svg></div>
+                <div class="cbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg></div>
+                <div class="cbtn end"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.996.996 0 0 1 0-1.41C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg></div>
+              </div>
+              <div class="blackout" id="blackout">pantalla apagada<br>toques bloqueados</div>
+            </div>
+
+            <!-- Pantalla: inicio (luz) -->
+            <div class="app home" id="appLux" hidden>
+              <div class="clock" id="homeClock">9:41</div>
+              <div class="date" id="homeDate">domingo, 11 de octubre</div>
+              <div class="luxbadge"><span id="homeLux">320 lx</span>·<span id="homeMode">Modo claro</span></div>
+              <div class="apps">
+                <div class="ico"><span style="background:#4C6EF5"></span>Cámara</div>
+                <div class="ico"><span style="background:#2FB36B"></span>Mensajes</div>
+                <div class="ico"><span style="background:#F08C00"></span>Mapas</div>
+                <div class="ico"><span style="background:#E64980"></span>Música</div>
+                <div class="ico"><span style="background:#7048E8"></span>Fotos</div>
+                <div class="ico"><span style="background:#1098AD"></span>Clima</div>
+                <div class="ico"><span style="background:#868E96"></span>Ajustes</div>
+                <div class="ico"><span style="background:#D6336C"></span>Libros</div>
+              </div>
+              <div class="brightbar">☀<div class="track"><div class="fill" id="brightFill" style="width:60%"></div></div><span id="brightPct">60%</span></div>
+            </div>
+
+            <!-- Pantalla: batería -->
+            <div class="app batscr" id="appBat" hidden>
+              <div class="bigbat">
+                <div class="inner">
+                  <div class="fill" id="bigFill" style="height:80%"><div class="wave"></div></div>
+                  <div class="bolt"><svg viewBox="0 0 24 24" fill="#FFFFFF"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></div>
+                </div>
+              </div>
+              <div class="batpct" id="batPct">80%</div>
+              <div class="batstate" id="batState">Descargando</div>
+              <div class="batgrid">
+                <div><small>Fuente</small><b id="bgSrc">Batería</b></div>
+                <div><small>Temperatura</small><b id="bgTemp">29.4 °C</b></div>
+                <div><small>Voltaje</small><b id="bgVolt">4.06 V</b></div>
+                <div><small>Salud</small><b>Buena</b></div>
+              </div>
+            </div>
+
+            <div class="chgflash" id="chgflash">
+              <div>
+                <div class="ring" id="ring" style="--p:80"><b id="ringPct">80%</b></div>
+                <p>CARGANDO…</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cable" id="cable" aria-hidden="true"><div class="plug"></div><div class="wire"></div></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--prox)"></i>Sensor de proximidad</span>
+        <span><i style="background:var(--lux)"></i>Sensor de luz</span>
+        <span>Ambos están junto a la cámara frontal</span>
+      </div>
+    </div>
+
+    <!-- ───── Panel ───── -->
+    <div class="panel">
+      <div class="tabs" role="tablist" aria-label="Sensor">
+        <button class="tab" role="tab" id="tab-prox" aria-selected="true" data-s="prox" style="--c:var(--prox)"><i></i>Proximidad</button>
+        <button class="tab" role="tab" id="tab-lux" aria-selected="false" data-s="lux" style="--c:var(--lux)"><i></i>Luz</button>
+        <button class="tab" role="tab" id="tab-bat" aria-selected="false" data-s="bat" style="--c:var(--bat)"><i></i>Batería</button>
+      </div>
+
+      <!-- Controles: proximidad -->
+      <section class="card" id="ctlProx" style="--sc:var(--prox)">
+        <div class="eyebrow">Simulador</div>
+        <h2>Acerca la mano al teléfono</h2>
+        <p class="sub">Durante una llamada, al acercar el teléfono a la oreja la pantalla se apaga para no colgar con la mejilla.</p>
+        <div class="reading"><span class="big" id="proxVal">8.0</span><span class="unit">cm</span><span class="pill" id="proxPill">LEJOS</span></div>
+        <div class="ctl">
+          <label for="proxRange">Distancia del objeto <span>umbral: 3 cm</span></label>
+          <input type="range" id="proxRange" min="0" max="10" step="0.5" value="8">
+          <div class="scale"><span>0 cm (pegado)</span><span>10 cm</span></div>
+        </div>
+        <div class="btns">
+          <button class="btn primary" id="earBtn">Llevar a la oreja</button>
+          <button class="btn" id="pocketBtn" aria-pressed="false">Guardar en el bolsillo</button>
+        </div>
+      </section>
+
+      <!-- Controles: luz -->
+      <section class="card" id="ctlLux" style="--sc:var(--lux)" hidden>
+        <div class="eyebrow">Simulador</div>
+        <h2>Cambia la luz del ambiente</h2>
+        <p class="sub">El teléfono ajusta el brillo solo y activa el modo oscuro cuando hay poca luz.</p>
+        <div class="reading"><span class="big" id="luxVal">320</span><span class="unit">lux</span><span class="pill" id="luxPill">Habitación</span></div>
+        <div class="ctl">
+          <label for="luxRange">Iluminación <span id="luxBright">brillo 50%</span></label>
+          <input type="range" id="luxRange" min="0" max="1000" step="1" value="501">
+          <div class="scale"><span>0 lx</span><span>10</span><span>1 000</span><span>100 000 lx</span></div>
+        </div>
+        <div class="btns" id="luxPresets">
+          <button class="btn" data-lux="1">Noche · 1 lx</button>
+          <button class="btn" data-lux="150">Habitación · 150 lx</button>
+          <button class="btn" data-lux="500">Oficina · 500 lx</button>
+          <button class="btn" data-lux="8000">Nublado · 8 000 lx</button>
+          <button class="btn" data-lux="60000">Sol directo · 60 000 lx</button>
+        </div>
+      </section>
+
+      <!-- Controles: batería -->
+      <section class="card" id="ctlBat" style="--sc:var(--bat)" hidden>
+        <div class="eyebrow">Simulador</div>
+        <h2>Conecta el cargador</h2>
+        <p class="sub">Al conectar aparece la animación de carga. Con 15 % o menos se activa el ahorro de energía.</p>
+        <div class="reading"><span class="big" id="batVal">80</span><span class="unit">%</span><span class="pill" id="batPill">Descargando</span></div>
+        <div class="ctl">
+          <label for="batRange">Nivel de batería <span id="batVolt">4.06 V</span></label>
+          <input type="range" id="batRange" min="0" max="100" step="1" value="80">
+        </div>
+        <div class="btns">
+          <button class="btn primary" id="plugBtn" aria-pressed="false">Conectar cargador</button>
+          <select id="srcSel" aria-label="Tipo de cargador">
+            <option value="Cargador de pared">Pared (AC)</option>
+            <option value="USB">USB</option>
+            <option value="Inalámbrica">Inalámbrica</option>
+          </select>
+          <button class="btn" id="realBtn" aria-pressed="false">Usar mi batería real</button>
+        </div>
+        <p class="note" id="realNote" hidden></p>
+      </section>
+
+      <section class="card" style="--sc:var(--accent)">
+        <div class="eyebrow">Eventos que recibe la app</div>
+        <pre class="log" id="log" aria-live="polite"></pre>
+      </section>
+
+      <!-- Preguntas -->
+      <section class="card" id="qaCard" style="--sc:var(--prox)">
+        <div class="eyebrow" id="qaEyebrow">Proximidad</div>
+        <h2>Las 4 preguntas</h2>
+        <p class="sub">Respuestas para Android con Flutter.</p>
+        <div class="qa" id="qa"></div>
+        <pre class="code" id="code"></pre>
+      </section>
+    </div>
+  </div>
+
+  <section class="card" style="margin-top:28px; --sc:var(--accent)">
+    <div class="eyebrow">Resumen para la exposición</div>
+    <h2>Los tres sensores lado a lado</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Sensor</th><th>Permiso</th><th>Cuándo lo usamos</th><th>Qué usaremos</th><th>Unidad</th></tr></thead>
+        <tbody>
+          <tr><td><i style="background:var(--prox)"></i>Proximidad</td><td>Ninguno</td><td>Llamadas, bolsillo, gestos sin tocar</td><td><code>TYPE_PROXIMITY</code> · paquete <code>proximity_sensor</code></td><td>cm (cerca / lejos)</td></tr>
+          <tr><td><i style="background:var(--lux)"></i>Luz</td><td>Ninguno</td><td>Brillo automático, modo oscuro, lectura</td><td><code>TYPE_LIGHT</code> · paquete <code>light</code></td><td>lux</td></tr>
+          <tr><td><i style="background:var(--bat)"></i>Batería</td><td>Ninguno para nivel y estado · <code>PACKAGE_USAGE_STATS</code> para consumo por app</td><td>Animación al cargar, aviso de batería baja, pausar tareas pesadas</td><td><code>BatteryManager</code> · paquete <code>battery_plus</code></td><td>% · °C · V</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  /* ───────── Contenido de las 4 preguntas ───────── */
+  const QA = {
+    prox: {
+      name: 'Proximidad', color: 'var(--prox)',
+      q: [
+        ['¿Qué permisos necesitamos?', `<p><span class="tag-ok">Ninguno.</span> Android e iOS dejan leer este sensor sin pedirle nada al usuario.</p>
+          <p>Solo si la app apaga la pantalla por su cuenta (con <code>PROXIMITY_SCREEN_OFF_WAKE_LOCK</code>) se declara <code>WAKE_LOCK</code>, que el sistema concede automáticamente.</p>`],
+        ['¿Cuándo lo vamos a usar?', `<ul><li>En llamadas: apagar la pantalla al acercarla a la oreja.</li><li>Detectar que el teléfono está en el bolsillo o boca abajo.</li><li>Gestos sin tocar: pasar la mano para pausar música o un video.</li></ul>`],
+        ['¿Qué usaremos?', `<ul><li>Sensor infrarrojo junto al auricular: un LED emite luz y un receptor mide el rebote.</li><li>Android: <code>SensorManager</code> con <code>Sensor.TYPE_PROXIMITY</code>.</li><li>Flutter: paquete <code>proximity_sensor</code>.</li></ul>`],
+        ['¿Cómo funciona?', `<p>Entrega una distancia en centímetros. Muchos teléfonos solo dan dos valores: <code>0</code> (cerca) o su máximo, unos 5 cm (lejos).</p><p>Escuchamos el sensor solo mientras hace falta y cancelamos la suscripción en <code>dispose()</code> para no gastar batería.</p>`],
+      ],
+      code: `<span class="c">// pubspec.yaml → proximity_sensor</span>
+late StreamSubscription&lt;int&gt; _sub;
+
+_sub = ProximitySensor.events.listen((int event) {
+  setState(() => _cerca = event &gt; 0);  <span class="c">// 1 = cerca, 0 = lejos</span>
+});
+
+<span class="c">// al salir de la pantalla</span>
+_sub.cancel();`
+    },
+    lux: {
+      name: 'Luz', color: 'var(--lux)',
+      q: [
+        ['¿Qué permisos necesitamos?', `<p><span class="tag-ok">Ninguno</span> en Android.</p><p>En iPhone no hay forma de leerlo: Apple no ofrece una API pública del sensor de luz y lo reserva para el brillo automático del sistema.</p>`],
+        ['¿Cuándo lo vamos a usar?', `<ul><li>Ajustar el brillo de la app según el ambiente.</li><li>Activar el modo oscuro cuando hay poca luz.</li><li>Apps de lectura, o sugerir el flash en la cámara.</li></ul>`],
+        ['¿Qué usaremos?', `<ul><li>Fotodiodo junto a la cámara frontal.</li><li>Android: <code>SensorManager</code> con <code>Sensor.TYPE_LIGHT</code>.</li><li>Flutter: paquete <code>light</code> (solo Android).</li></ul>`],
+        ['¿Cómo funciona?', `<p>Mide la luz en <b>lux</b>: 0 es oscuridad total, una oficina tiene unos 500 lx y el sol directo pasa de 30 000 lx.</p><p>Como la escala es enorme, conviene promediar varias lecturas para que el brillo no parpadee.</p>`],
+      ],
+      code: `<span class="c">// pubspec.yaml → light</span>
+final _light = Light();
+
+_sub = _light.lightSensorStream.listen((int lux) {
+  setState(() {
+    _lux = lux;
+    _modoOscuro = lux &lt; 50;   <span class="c">// poca luz → tema oscuro</span>
+  });
+});`
+    },
+    bat: {
+      name: 'Batería', color: 'var(--bat)',
+      q: [
+        ['¿Qué permisos necesitamos?', `<p><span class="tag-ok">Ninguno</span> para nivel, estado, temperatura y voltaje.</p>
+          <p>Para saber qué apps gastan más: <code>PACKAGE_USAGE_STATS</code>, un permiso especial que el usuario activa en Ajustes → Acceso a datos de uso. <code>BATTERY_STATS</code> es solo para apps del sistema.</p>`],
+        ['¿Cuándo lo vamos a usar?', `<ul><li>Mostrar la animación al conectar el cargador.</li><li>Avisar cuando la batería está baja.</li><li>Pausar tareas pesadas (subir fotos, sincronizar) con poca batería, o dejarlas para cuando esté cargando.</li></ul>`],
+        ['¿Qué usaremos?', `<ul><li>Android: <code>BatteryManager</code> y el aviso <code>ACTION_BATTERY_CHANGED</code>.</li><li>Flutter: paquete <code>battery_plus</code> para nivel, estado y modo ahorro.</li><li>Un <code>MethodChannel</code> propio para temperatura, voltaje y corriente.</li></ul>`],
+        ['¿Cómo funciona?', `<p>El sistema avisa cada vez que algo cambia: nivel (0–100 %), estado (cargando, descargando, llena), fuente (pared, USB, inalámbrica), temperatura en décimas de °C y voltaje en mV.</p><p>No hay sensor que leer: el chip de carga le reporta todo a Android.</p>`],
+      ],
+      code: `<span class="c">// pubspec.yaml → battery_plus</span>
+final battery = Battery();
+final nivel = await battery.batteryLevel;      <span class="c">// 0..100</span>
+
+battery.onBatteryStateChanged.listen((BatteryState s) {
+  if (s == BatteryState.charging) mostrarAnimacionCarga();
+  if (nivel &lt;= 15) avisarBateriaBaja();
+});`
+    }
+  };
+
+  /* ───────── Estado ───────── */
+  const st = {
+    sensor: 'prox',
+    dist: 8, near: false,
+    lux: 320,
+    level: 80, charging: false, src: 'Cargador de pared', real: false,
+    callStart: Date.now()
+  };
+
+  /* ───────── Log de eventos ───────── */
+  const logEl = $('log');
+  function log(tag, msg) {
+    const d = new Date();
+    const t = d.toTimeString().slice(0, 8);
+    const line = document.createElement('div');
+    line.innerHTML = `<span class="t">${t}</span> <span class="k">${tag}</span> ${msg}`;
+    logEl.appendChild(line);
+    while (logEl.children.length > 40) logEl.firstChild.remove();
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  /* ───────── Pestañas ───────── */
+  function setSensor(s) {
+    st.sensor = s;
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.s === s)));
+    $('ctlProx').hidden = s !== 'prox';
+    $('ctlLux').hidden = s !== 'lux';
+    $('ctlBat').hidden = s !== 'bat';
+    $('appProx').hidden = s !== 'prox';
+    $('appLux').hidden = s !== 'lux';
+    $('appBat').hidden = s !== 'bat';
+    $('dotProx').classList.toggle('active', s === 'prox');
+    $('dotLux').classList.toggle('active', s === 'lux');
+    $('hand').style.visibility = s === 'prox' ? 'visible' : 'hidden';
+
+    const d = QA[s];
+    $('qaCard').style.setProperty('--sc', d.color);
+    $('qaEyebrow').textContent = d.name;
+    $('qa').innerHTML = d.q.map((x, i) => `<div class="q"><h3><em>${i + 1}</em>${x[0]}</h3>${x[1]}</div>`).join('');
+    $('code').innerHTML = d.code;
+    renderLux(); renderProx(); renderBat();
+    try { localStorage.setItem('sensor-tab', s); } catch (e) {}
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setSensor(t.dataset.s)));
+
+  /* ───────── Proximidad ───────── */
+  const THRESH = 3, MAXR = 5;
+  function renderProx() {
+    const d = st.dist;
+    $('proxVal').textContent = d.toFixed(1);
+    $('proxRange').value = d;
+    const near = d < THRESH;
+    $('proxPill').textContent = near ? 'CERCA' : 'LEJOS';
+    // mano: 10 cm → arriba; 0 cm → tapando la parte superior
+    const y = -40 + (1 - d / 10) * 128;
+    $('hand').style.transform = `translateY(${y}px)`;
+    const off = near && st.sensor === 'prox';
+    $('blackout').classList.toggle('on', off);
+    if (near !== st.near) {
+      st.near = near;
+      const reported = near ? 0 : MAXR;
+      log('proximity', `distancia=${reported.toFixed(1)} cm → ${near ? '<b>CERCA</b>: apagar pantalla' : 'LEJOS: encender pantalla'}`);
+    }
+  }
+  $('proxRange').addEventListener('input', e => { st.dist = +e.target.value; renderProx(); });
+
+  let anim = null;
+  function tweenDist(to, ms, done) {
+    cancelAnimationFrame(anim);
+    const from = st.dist, t0 = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - t0) / ms);
+      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      st.dist = Math.round((from + (to - from) * e) * 10) / 10;
+      renderProx();
+      if (k < 1) anim = requestAnimationFrame(step); else if (done) done();
+    };
+    anim = requestAnimationFrame(step);
+  }
+  $('earBtn').addEventListener('click', () => {
+    $('pocketBtn').setAttribute('aria-pressed', 'false');
+    tweenDist(0.5, 800, () => setTimeout(() => tweenDist(8, 800), 2200));
+  });
+  $('pocketBtn').addEventListener('click', e => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    tweenDist(on ? 0 : 8, 600);
+    if (on) log('proximity', 'cubierto mucho tiempo → modo bolsillo: ignorar toques');
+  });
+
+  /* ───────── Luz ───────── */
+  const luxFromSlider = v => Math.round(Math.pow(10, v / 200)) - 1;
+  const sliderFromLux = l => Math.round(Math.log10(l + 1) * 200);
+  const luxLabel = l => l < 10 ? 'Oscuridad' : l < 200 ? 'Habitación' : l < 1000 ? 'Oficina' : l < 20000 ? 'Exterior nublado' : 'Sol directo';
+  let lastLuxMode = null;
+  function renderLux() {
+    const l = st.lux;
+    const norm = Math.min(1, Math.log10(l + 1) / 5);
+    const bright = Math.max(5, Math.round(norm * 100));
+    const dark = l < 50;
+    $('luxVal').textContent = l.toLocaleString('es-CO');
+    $('luxPill').textContent = luxLabel(l);
+    $('luxBright').textContent = `brillo auto ${bright}%`;
+    $('luxRange').value = sliderFromLux(l);
+    $('homeLux').textContent = `${l.toLocaleString('es-CO')} lx`;
+    $('homeMode').textContent = dark ? 'Modo oscuro' : 'Modo claro';
+    $('brightFill').style.width = bright + '%';
+    $('brightPct').textContent = bright + '%';
+
+    const onLux = st.sensor === 'lux';
+    $('roomDark').style.opacity = onLux ? (0.78 * (1 - norm)).toFixed(2) : 0;
+    $('lamp').style.opacity = onLux ? Math.max(0, (norm - .45) / .55).toFixed(2) : 0;
+
+    const scr = $('screen');
+    const lightScreen = (onLux && !dark) || (st.sensor === 'bat' && false);
+    scr.classList.toggle('light', lightScreen);
+    let filter = '';
+    if (onLux) filter = `brightness(${(0.35 + 0.65 * bright / 100).toFixed(2)})`;
+    if (st.sensor === 'bat' && saverOn()) filter = 'brightness(0.75)';
+    scr.style.filter = filter;
+
+    if (onLux && dark !== lastLuxMode) {
+      lastLuxMode = dark;
+      log('light', `${l} lx → ${dark ? 'activar modo oscuro' : 'usar modo claro'}`);
+    }
+  }
+  let luxLogT;
+  function setLux(l, fromPreset) {
+    st.lux = l; renderLux();
+    clearTimeout(luxLogT);
+    luxLogT = setTimeout(() => log('light', `lux=${l} · brillo=${$('brightPct').textContent}`), fromPreset ? 0 : 250);
+  }
+  $('luxRange').addEventListener('input', e => setLux(luxFromSlider(+e.target.value)));
+  $('luxPresets').addEventListener('click', e => {
+    const b = e.target.closest('[data-lux]'); if (b) setLux(+b.dataset.lux, true);
+  });
+
+  /* ───────── Batería ───────── */
+  const saverOn = () => st.level <= 15 && !st.charging;
+  let lastSaver = false, lastLow = false;
+  function renderBat() {
+    const lv = Math.round(st.level);
+    const ch = st.charging;
+    const volt = (3.5 + 0.7 * lv / 100 + (ch ? 0.12 : 0)).toFixed(2);
+    const temp = (28.6 + lv * 0.01 + (ch ? 5.2 : 0)).toFixed(1);
+    const estado = ch ? (lv >= 100 ? 'Carga completa' : 'Cargando') : 'Descargando';
+
+    $('batVal').textContent = lv;
+    $('batPill').textContent = estado;
+    $('batRange').value = lv;
+    $('batVolt').textContent = volt + ' V';
+    $('plugBtn').textContent = ch ? 'Desconectar cargador' : 'Conectar cargador';
+    $('plugBtn').setAttribute('aria-pressed', String(ch));
+    $('cable').classList.toggle('on', ch);
+
+    $('sbPct').textContent = lv + '%';
+    $('sbLvl').style.width = Math.max(4, lv) + '%';
+    const bi = $('sbBat');
+    bi.classList.toggle('chg', ch);
+    bi.classList.toggle('low', !ch && lv <= 15 && lv > 5 ? false : (!ch && lv <= 5));
+    bi.classList.toggle('saver', saverOn() && lv > 5);
+
+    $('batPct').textContent = lv + '%';
+    $('batState').textContent = estado + (saverOn() ? ' · ahorro activo' : '');
+    const f = $('bigFill');
+    f.style.height = lv + '%';
+    f.classList.toggle('low', lv <= 15);
+    f.classList.toggle('mid', lv > 15 && lv <= 40);
+    $('appBat').classList.toggle('charging', ch);
+    $('bgSrc').textContent = ch ? st.src : 'Batería';
+    $('bgTemp').textContent = temp + ' °C';
+    $('bgVolt').textContent = volt + ' V';
+    $('ring').style.setProperty('--p', lv);
+    $('ringPct').textContent = lv + '%';
+
+    const sv = saverOn();
+    $('toast').classList.toggle('on', sv);
+    if (sv !== lastSaver) { lastSaver = sv; if (sv) log('battery', `nivel=${lv}% → <b>batería baja</b>: ahorro de energía y pausar sincronización`); }
+    const low = lv <= 15;
+    if (low !== lastLow) lastLow = low;
+    if (st.sensor === 'bat') renderLuxFilterOnly();
+  }
+  function renderLuxFilterOnly() {
+    const scr = $('screen');
+    scr.classList.remove('light');
+    scr.style.filter = saverOn() ? 'brightness(0.75)' : '';
+    $('roomDark').style.opacity = 0; $('lamp').style.opacity = 0;
+  }
+
+  let flashT;
+  function chargingFlash() {
+    const el = $('chgflash');
+    el.classList.add('on');
+    clearTimeout(flashT);
+    flashT = setTimeout(() => el.classList.remove('on'), 2600);
+  }
+  function setCharging(on, silent) {
+    if (on === st.charging) return;
+    st.charging = on;
+    if (on) {
+      if (!silent) log('battery', `BatteryState.<b>charging</b> · fuente=${st.src} → mostrar animación`);
+      chargingFlash();
+    } else if (!silent) {
+      log('battery', 'BatteryState.discharging · cargador desconectado');
+    }
+    renderBat();
+  }
+  $('plugBtn').addEventListener('click', () => { if (!st.real) setCharging(!st.charging); });
+  $('srcSel').addEventListener('change', e => { st.src = e.target.value; renderBat(); });
+  $('batRange').addEventListener('input', e => { if (!st.real) { st.level = +e.target.value; renderBat(); } });
+  $('batRange').addEventListener('change', () => log('battery', `nivel=${Math.round(st.level)}%`));
+
+  // simulación: sube al cargar, baja lento sin cargador
+  setInterval(() => {
+    if (st.real) return;
+    if (st.charging && st.level < 100) { st.level = Math.min(100, st.level + 1); renderBat(); if (st.level === 100) log('battery', 'BatteryState.<b>full</b> · carga completa'); }
+  }, 600);
+  setInterval(() => {
+    if (st.real || st.charging || st.level <= 1) return;
+    st.level -= 1; renderBat();
+  }, 5000);
+
+  // batería real del dispositivo (Chrome / Edge / Android)
+  let realBat = null;
+  $('realBtn').addEventListener('click', async () => {
+    const note = $('realNote');
+    if (st.real) {
+      st.real = false;
+      $('realBtn').setAttribute('aria-pressed', 'false');
+      $('batRange').disabled = false;
+      note.hidden = true;
+      log('battery', 'volviendo al simulador');
+      return;
+    }
+    try {
+      if (!navigator.getBattery) throw new Error('sin API');
+      realBat = await navigator.getBattery();
+      st.real = true;
+      $('realBtn').setAttribute('aria-pressed', 'true');
+      $('batRange').disabled = true;
+      const sync = () => {
+        if (!st.real) return;
+        st.level = Math.round(realBat.level * 100);
+        setCharging(realBat.charging);
+        renderBat();
+      };
+      ['levelchange', 'chargingchange'].forEach(ev => realBat.addEventListener(ev, () => { sync(); log('battery', `[real] ${ev}: ${Math.round(realBat.level * 100)}% · ${realBat.charging ? 'cargando' : 'descargando'}`); }));
+      sync();
+      note.hidden = false;
+      note.textContent = 'Leyendo la batería real de este dispositivo. Conecta o desconecta tu cargador para ver la animación.';
+      log('battery', `[real] ${Math.round(realBat.level * 100)}% · ${realBat.charging ? 'cargando' : 'descargando'}`);
+    } catch (e) {
+      note.hidden = false;
+      note.textContent = 'Este navegador no deja leer la batería (Safari y Firefox la bloquean). Abre la demo en Chrome o sigue con el simulador.';
+    }
+  });
+
+  /* ───────── Reloj y llamada ───────── */
+  const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  function tick() {
+    const d = new Date();
+    const hm = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+    $('sbTime').textContent = hm;
+    $('homeClock').textContent = hm;
+    $('homeDate').textContent = `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
+    const s = Math.floor((Date.now() - st.callStart) / 1000);
+    $('callTime').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+  setInterval(tick, 1000); tick();
+
+  /* ───────── Inicio ───────── */
+  let first = 'prox';
+  try { const s = localStorage.getItem('sensor-tab'); if (QA[s]) first = s; } catch (e) {}
+  const h = location.hash.replace('#', '');
+  if (QA[h]) first = h;
+  renderBat();
+  setSensor(first);
+  log('app', 'sensores listos · escuchando proximidad, luz y batería');
+})();
+</script>
+
+</body></html>
